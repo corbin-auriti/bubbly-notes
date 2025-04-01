@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Bubbles Enhanced</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="background"></div>
+    <div id="app">
+        <div id="bubble-container">
+            <!-- Bubbles will be dynamically added here -->
+        </div>
+
+        <div id="controls">
+            <button id="add-bubble-btn" title="Add a new bubble">Add Bubble</button>
+            <button id="change-theme-btn" title="Cycle background theme">Change Theme</button>
+            <button id="export-md-btn" title="Save bubbles to a Markdown file">Export Markdown</button>
+            <label for="import-md-input" class="btn-like" title="Load bubbles from a Markdown file">Import Markdown</label>
+            <input type="file" id="import-md-input" accept=".md, .txt" style="display: none;">
+             <button id="clear-all-btn" title="Delete all bubbles">Clear All</button>
+        </div>
+    </div>
+
+    <!-- Minimal Audio Context Starter -->
+    <script>
+      // Ensure AudioContext is created after first user interaction
+      let audioCtx;
+      function initAudio() {
+        if (!audioCtx) {
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            console.log("AudioContext initialized.");
+          } catch(e) {
+            console.error("Web Audio API is not supported in this browser.", e);
+          }
+        }
+        // Remove the listener after first interaction
+        document.removeEventListener('click', initAudio);
+        document.removeEventListener('keydown', initAudio);
+      }
+      document.addEventListener('click', initAudio, { once: true });
+      document.addEventListener('keydown', initAudio, { once: true });
+    </script>
+
+    <script src="script.js"></script>
+</body>
+</html>

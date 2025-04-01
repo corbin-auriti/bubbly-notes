@@ -1,0 +1,487 @@
+:root {
+    /* Theme 1 (Default) - Values updated by JS */
+    --pastel1: #a8e6cf;
+    --pastel2: #dcedc1;
+    --pastel3: #ffd3b6;
+    --pastel4: #ffaaa5;
+    --pastel5: #ff8b94;
+
+    /* Configuration Variables */
+    --bg-anim-duration: 90s;
+    --bubble-float-duration: 15s;
+    --bubble-min-width: 90px; /* Increased min size slightly */
+    --bubble-min-height: 90px;
+    --controls-size: 24px; /* Size of the square hover buttons */
+    --controls-offset: 18px; /* How far above bubble controls appear */
+    --theme-transition-duration: 1.5s; /* How long background fade takes */
+    --pop-animation-duration: 0.3s; /* Duration of the delete animation */
+    --resize-handle-size: 18px; /* Make handle visually larger */
+    --resize-handle-offset: -7px; /* Position slightly outside bottom-right */
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Nicer default font */
+    overflow: hidden; /* Prevent scrollbars on the body */
+    color: #333; /* Default text color */
+    background-color: var(--pastel1); /* Fallback background color */
+}
+
+#background {
+    position: fixed;
+    top: -10%; left: -10%; /* Extend beyond viewport to hide edges during animation */
+    width: 120%; height: 120%;
+    z-index: -1; /* Place behind everything */
+    background: linear-gradient(-45deg, var(--pastel1), var(--pastel2), var(--pastel3), var(--pastel4), var(--pastel5));
+    background-size: 400% 400%; /* Make gradient large for smooth animation */
+    animation: shiftBackground var(--bg-anim-duration) ease infinite alternate; /* Apply animation */
+    transition: background var(--theme-transition-duration) ease-in-out; /* Smooth theme changes */
+}
+
+/* Background Gradient Animation */
+@keyframes shiftBackground {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+#app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#bubble-container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; /* Allow clicks to pass through to bubbles */
+}
+
+/* Base Bubble Styles */
+.bubble {
+    position: absolute;
+    min-width: var(--bubble-min-width);
+    min-height: var(--bubble-min-height);
+    border-radius: 50%; /* Ensure circular shape */
+    background-color: rgba(255, 255, 255, 0.7); /* Default background, overridden by JS */
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.12), inset 0 0 25px rgba(255, 255, 255, 0.2); /* Soft shadow */
+    cursor: grab; /* Indicate draggable */
+    /* Use Flexbox for vertical layout of title + content */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items horizontally */
+    justify-content: center; /* Center items vertically */
+    padding: 15px; /* Inner spacing */
+    box-sizing: border-box; /* Include padding in width/height */
+    overflow: visible; /* IMPORTANT: Allow controls/handle to show outside bounds */
+    animation: floatBubble var(--bubble-float-duration) ease-in-out infinite alternate; /* Apply floating animation */
+    pointer-events: auto; /* Bubbles themselves are interactive */
+    user-select: none; /* Prevent text selection during drag */
+    /* Smooth transitions for movement, shadow, and color changes */
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease, background-color 0.3s ease;
+    text-align: center; /* Default text alignment */
+}
+
+/* Pop Animation on Delete */
+@keyframes pop {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.8; } /* Expand slightly */
+    100% { transform: scale(0.8); opacity: 0; } /* Shrink and fade out */
+}
+
+/* Class applied during delete animation */
+.bubble.popping {
+    animation: pop var(--pop-animation-duration) ease-out forwards; /* Apply pop animation */
+    pointer-events: none; /* Disable interaction during animation */
+    z-index: 1100; /* Ensure pop animation is visible above others */
+}
+
+
+/* --- JS Class for Controls Hover State --- */
+/* Show controls/handle when the JS adds the 'controls-active' class */
+.bubble.controls-active .bubble-controls,
+.bubble.controls-active .resize-handle {
+    opacity: 1; /* Make visible */
+    pointer-events: auto; /* Make interactive */
+}
+
+/* Keep controls/handle interactive if directly hovered, overriding JS hide attempts */
+.bubble-controls:hover,
+.resize-handle:hover {
+    opacity: 1 !important; /* Force visibility */
+    pointer-events: auto !important; /* Force interactivity */
+}
+.resize-handle:hover {
+     background-color: rgba(0, 0, 0, 0.5) !important; /* Darken handle specifically on hover */
+}
+
+
+/* Bubble States: Active, Dragging, Resizing */
+.bubble:active, .bubble.dragging {
+    cursor: grabbing; /* Indicate active drag */
+    z-index: 1000; /* Bring dragged bubble to front */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.15); /* Enhance shadow */
+    animation-play-state: paused; /* Stop floating animation */
+}
+.bubble.resizing {
+     animation-play-state: paused; /* Stop floating during resize */
+     z-index: 1000; /* Ensure it's on top */
+}
+.bubble.stuck {
+   animation-play-state: paused; /* Stop floating when stuck */
+}
+
+/* Hide controls immediately when dragging or resizing starts */
+.bubble.dragging .bubble-controls,
+.bubble.resizing .bubble-controls,
+.bubble.dragging .resize-handle,
+.bubble.resizing .resize-handle {
+    opacity: 0 !important; /* Force hidden */
+    pointer-events: none !important; /* Force non-interactive */
+}
+
+
+/* Bubble Floating Animation */
+@keyframes floatBubble {
+    0% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+    50% { transform: translateY(-15px) translateX(5px) rotate(3deg); }
+    100% { transform: translateY(0px) translateX(-5px) rotate(-3deg); }
+}
+
+/* Bubble Title Area Styles */
+.bubble-title {
+    font-weight: bold; /* Make title bold */
+    font-size: 1.1em; /* Slightly larger than content */
+    margin-bottom: 8px; /* Space below title */
+    padding: 0 5px; /* Prevent text touching edges */
+    width: 100%; /* Take full width */
+    box-sizing: border-box;
+    color: rgba(0, 0, 0, 0.75); /* Slightly softer black */
+    max-height: 2.5em; /* Limit title height to prevent overflow */
+    overflow: hidden; /* Hide overflowing text */
+    text-overflow: ellipsis; /* Add '...' if title is too long */
+    white-space: nowrap; /* Keep title on a single line */
+}
+/* Style for the title input field during editing */
+.bubble-title input {
+    width: 90%; /* Input width within the title area */
+    border: none; /* Remove default border */
+    border-bottom: 1px dashed rgba(0,0,0,0.2); /* Subtle underline */
+    background: transparent; /* No background */
+    outline: none; /* Remove focus outline */
+    font-weight: bold; /* Match display style */
+    font-size: 1em; /* Match display size */
+    text-align: center; /* Center text in input */
+    padding: 2px;
+    margin-bottom: 8px; /* Match display margin */
+    color: inherit; /* Inherit text color */
+}
+
+
+/* Bubble Content Area Styles */
+.bubble-content {
+    width: 100%;
+    /* Height is flexible based on content, limited by bubble padding */
+    flex-grow: 1; /* Allow content area to take available vertical space */
+    overflow-y: auto; /* Enable vertical scrolling for long content */
+    font-size: 14px; /* Base font size for content */
+    word-wrap: break-word; /* Wrap long words */
+    background: transparent; /* Let bubble background show through */
+    padding: 0 5px; /* Padding inside the content scroll area */
+    box-sizing: border-box;
+    scrollbar-width: thin; /* Slimmer scrollbar (Firefox) */
+    scrollbar-color: rgba(0,0,0,0.2) transparent; /* Custom scrollbar colors (Firefox) */
+    line-height: 1.4; /* Improve text readability */
+}
+/* Webkit (Chrome, Safari) Scrollbar Styles */
+.bubble-content::-webkit-scrollbar {
+    width: 6px; /* Width of the scrollbar */
+}
+.bubble-content::-webkit-scrollbar-track {
+    background: transparent; /* Scrollbar track background */
+}
+.bubble-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2); /* Color of the scrollbar thumb */
+    border-radius: 3px; /* Rounded scrollbar thumb */
+}
+
+/* Seamless Textarea Styles (during editing) */
+.bubble-content textarea.seamless-editing {
+    width: 100%;
+    height: 100%; /* Fill the content area */
+    min-height: 50px; /* Ensure a minimum typing space */
+    border: none; /* Remove border */
+    background: transparent; /* No background */
+    outline: none; /* Remove focus outline */
+    resize: none; /* Disable manual textarea resizing */
+    padding: 0; margin: 0; /* Remove padding/margin */
+    font-family: inherit; /* Use bubble's font */
+    font-size: inherit; /* Use content area's font size */
+    color: inherit; /* Use bubble's text color */
+    overflow-y: auto; /* Allow scrolling within textarea */
+    box-shadow: none; /* Remove shadow */
+    white-space: pre-wrap; /* Respect typed newlines */
+    word-wrap: break-word; /* Wrap long lines */
+    text-align: center; /* Keep text centered while editing */
+    line-height: inherit; /* Match display line height */
+}
+
+/* Content Type Specific Styles */
+.bubble-content img {
+    max-width: 100%; /* Prevent image exceeding bubble width */
+    max-height: 100%; /* Limit image height (useful for tall images) */
+    height: auto; /* Maintain aspect ratio */
+    display: block; /* Prevent extra space below image */
+    margin: auto; /* Center image horizontally */
+    border-radius: 4px; /* Slightly rounded corners */
+}
+.bubble-content a {
+    color: steelblue; /* Standard link color */
+    text-decoration: none; /* No underline by default */
+    word-break: break-all; /* Prevent long URLs overflowing */
+}
+.bubble-content a:hover {
+    text-decoration: underline; /* Underline on hover */
+}
+/* Styles for ToDo and Basic Lists */
+.bubble-content ul {
+    list-style: none; /* Remove default bullet points */
+    padding: 0 0 0 20px; /* Indent list items */
+    margin: 5px auto; /* Vertical margin, centered horizontally */
+    text-align: left; /* Align list text left */
+    display: inline-block; /* Allows centering the block itself */
+    max-width: 100%; /* Prevent list exceeding bubble width */
+}
+.bubble-content li {
+    margin-bottom: 5px; /* Space between list items */
+}
+/* Style ToDo list checkboxes */
+.bubble-content input[type="checkbox"] {
+     margin-right: 8px; /* Space between checkbox and text */
+     cursor: pointer; /* Indicate clickable */
+     vertical-align: middle; /* Align checkbox better with text */
+}
+/* Style completed ToDo items */
+.bubble-content input[type="checkbox"]:checked + span {
+    text-decoration: line-through; /* Strikethrough text */
+    opacity: 0.7; /* Dim completed items */
+}
+/* Style for paragraphs within the content area (e.g., text above a list) */
+.bubble-content .content-paragraph {
+     margin: 8px 0; /* Vertical spacing for paragraphs */
+     text-align: center; /* Center paragraphs */
+}
+/* Style for headings within the content area */
+.bubble-content .content-heading {
+    font-weight: bold; /* Make headings bold */
+    margin: 10px 0 5px 0; /* Spacing around headings */
+    text-align: center; /* Center headings */
+}
+
+
+/* Bubble Controls - Positioned outside on hover */
+.bubble-controls {
+    position: absolute;
+    top: calc(-1 * var(--controls-offset)); /* Position above bubble using offset variable */
+    /* Center controls horizontally above bubble */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex; /* Arrange buttons horizontally */
+    align-items: center; /* Align items vertically */
+    gap: 8px; /* Increased space between controls */
+    opacity: 0; /* Hidden by default */
+    pointer-events: none; /* Not interactive when hidden */
+    transition: opacity 0.2s ease-in-out; /* Smooth fade */
+    z-index: 10; /* Above bubble, below resize handle */
+    /* Add a subtle background to the controls group */
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 4px 8px; /* Padding inside the controls group */
+    border-radius: 15px; /* Rounded corners for the group */
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); /* Subtle shadow for the group */
+}
+
+/* Styles for individual control buttons (Edit, Delete) */
+.bubble-delete-btn, .bubble-edit-btn {
+    background: rgba(0, 0, 0, 0.4); /* Dark semi-transparent background */
+    color: white; /* White icon color */
+    border: none; /* No border */
+    border-radius: 50%; /* Circular buttons */
+    width: var(--controls-size); /* Use variable for size */
+    height: var(--controls-size); /* Use variable for size */
+    font-size: 14px; /* Icon size */
+    line-height: var(--controls-size); /* Center icon vertically */
+    text-align: center; /* Center icon horizontally */
+    cursor: pointer; /* Pointer cursor */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Subtle shadow */
+    transition: background-color 0.2s ease, transform 0.1s ease; /* Smooth transitions */
+    padding: 0; /* Remove default padding */
+    /* Use flex to perfectly center the icon inside */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.bubble-delete-btn:hover, .bubble-edit-btn:hover {
+    background: rgba(0, 0, 0, 0.6); /* Darken on hover */
+    transform: scale(1.1); /* Slightly enlarge on hover */
+}
+
+/* Color Picker Control Styles */
+.bubble-color-picker {
+    /* Make slightly larger than other controls for easier clicking */
+    width: calc(var(--controls-size) + 4px);
+    height: calc(var(--controls-size) + 4px);
+    border: none; /* Remove default border */
+    padding: 0; /* Remove default padding */
+    border-radius: 50%; /* Circular */
+    cursor: pointer; /* Pointer cursor */
+    background-color: transparent; /* Hide default button look */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Match other controls */
+    overflow: hidden; /* Clip the native color picker's square look */
+    vertical-align: middle; /* Align with other buttons */
+    appearance: none; /* Attempt to remove native styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+/* Style the color swatch area (Webkit) */
+.bubble-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0; /* Remove padding */
+}
+.bubble-color-picker::-webkit-color-swatch {
+    border: none; /* Remove border */
+    border-radius: 50%; /* Make the swatch circular */
+}
+/* Style the color swatch area (Firefox) */
+.bubble-color-picker::-moz-color-swatch {
+    border: none; /* Remove border */
+    border-radius: 50%; /* Make the swatch circular */
+}
+
+
+/* Resize Handle Styles */
+.resize-handle {
+    position: absolute;
+    bottom: var(--resize-handle-offset); /* Position using variable */
+    right: var(--resize-handle-offset); /* Position using variable */
+    width: var(--resize-handle-size); /* Use variable for size */
+    height: var(--resize-handle-size); /* Use variable for size */
+    background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent background */
+    border: 2px solid rgba(255, 255, 255, 0.5); /* Make border more visible */
+    border-radius: 50%; /* Circular handle */
+    cursor: nwse-resize; /* Diagonal resize cursor */
+    z-index: 11; /* Above controls */
+    opacity: 0; /* Hidden by default */
+    pointer-events: none; /* Not interactive when hidden */
+    /* Smooth transitions for appearance and interaction */
+    transition: opacity 0.2s ease-in-out, background-color 0.2s ease, transform 0.1s ease;
+    box-sizing: border-box; /* Include border in the element's total size */
+}
+.resize-handle:hover {
+    transform: scale(1.1); /* Slightly enlarge handle on hover */
+    /* Hover background color handled by shared rule above */
+}
+
+
+/* Bottom Control Bar Styles */
+#controls {
+    position: fixed; /* Keep at bottom of viewport */
+    bottom: 20px; /* Distance from bottom */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Precise horizontal centering */
+    background-color: rgba(255, 255, 255, 0.85); /* Slightly opaque background */
+    padding: 10px 15px; /* Padding inside the bar */
+    border-radius: 25px; /* Rounded ends */
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15); /* Softer shadow */
+    z-index: 1001; /* Ensure above bubbles */
+    display: flex; /* Arrange buttons horizontally */
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    justify-content: center; /* Center buttons if they wrap */
+    gap: 10px; /* Space between buttons */
+}
+
+/* Styles for buttons within the bottom control bar */
+#controls button, .btn-like { /* Apply to buttons and the label styled as a button */
+    padding: 8px 15px; /* Button padding */
+    border: none; /* No border */
+    background-color: var(--pastel4); /* Use theme color */
+    color: white; /* White text */
+    border-radius: 15px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor */
+    font-size: 14px; /* Text size */
+    font-weight: 500; /* Slightly bolder text */
+    /* Smooth transitions for hover/active states */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+#controls button:hover, .btn-like:hover {
+    background-color: var(--pastel5); /* Use different theme color on hover */
+}
+/* Click feedback effect */
+#controls button:active, .btn-like:active {
+    transform: scale(0.95); /* Slightly shrink on click */
+}
+
+/* Specific Button Styles in Bottom Bar */
+#clear-all-btn {
+    background-color: #b0a8b9; /* Muted purple/gray */
+}
+#clear-all-btn:hover {
+     background-color: #968fa3; /* Darker muted purple/gray */
+}
+#change-theme-btn {
+    background-color: var(--pastel3); /* Use a different theme color */
+}
+#change-theme-btn:hover {
+    background-color: var(--pastel2); /* Use another theme color on hover */
+ }
+ /* Style for the label acting as import button */
+ .btn-like {
+    display: inline-block; /* Allow padding/styling like a button */
+    background-color: var(--pastel1); /* Use theme color */
+ }
+ .btn-like:hover {
+     background-color: var(--pastel2); /* Use theme color on hover */
+ }
+
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 600px) {
+    :root {
+        /* Adjust control sizes and offsets for smaller touch targets */
+        --controls-size: 22px;
+        --controls-offset: 15px;
+        --resize-handle-size: 16px;
+        --resize-handle-offset: -6px;
+        /* Optionally reduce min bubble size further if needed */
+        /* --bubble-min-width: 70px; */
+        /* --bubble-min-height: 70px; */
+    }
+
+    .bubble {
+        padding: 12px; /* Slightly reduce bubble padding */
+    }
+    .bubble-title {
+        font-size: 1em; /* Reduce title size slightly */
+        margin-bottom: 5px; /* Reduce space below title */
+    }
+    .bubble-content {
+        font-size: 12px; /* Smaller content font on mobile */
+        line-height: 1.3; /* Adjust line height for smaller font */
+    }
+    .bubble-controls {
+        gap: 6px; /* Reduce gap between controls */
+        padding: 3px 6px; /* Reduce padding in controls group */
+    }
+    /* Bottom controls adjustments */
+    #controls {
+        width: 90%; /* Allow bar to take more width */
+        bottom: 10px; /* Closer to bottom edge */
+        padding: 8px 10px; /* Reduce padding */
+        gap: 8px; /* Slightly less gap between buttons */
+    }
+    #controls button, .btn-like {
+        padding: 6px 10px; /* Smaller button padding */
+        font-size: 12px; /* Smaller button text */
+        border-radius: 12px; /* Adjust border radius */
+    }
+}
